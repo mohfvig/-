@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة أ/ سيد عويضة التعليمية</title>
+    
+    <script>
+        (function() {
+            var savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            var user = localStorage.getItem('currentUser');
+            if (!user) {
+                window.location.replace('login.html');
+            }
+        })();
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <style>
+        .coins-badge {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .courses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 18px;
+            margin-top: 15px;
+        }
+
+        .course-card {
+            background: var(--input-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+
+        .course-card h4 {
+            color: var(--accent-neon);
+            margin-bottom: 8px;
+            font-size: 1.05rem;
+        }
+
+        .course-card p {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .course-card .price-tag {
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+
+        .playlist-item {
+            padding: 12px 15px;
+            margin-top: 8px;
+            background: var(--input-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .playlist-item:hover {
+            border-color: var(--accent-neon);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="neon-logo">د/ سيد عويضة <span>.Edu</span></div>
+        <div class="nav-right-controls">
+            <div class="coins-badge">🪙 <span id="userCoinsDisplay">0</span></div>
+            <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeBtn">☀️</button>
+        </div>
+    </header>
+
+    <main class="container" style="padding-bottom: 90px;">
+
+        <!-- تبويب: شراء الكورسات -->
+        <section class="card-box tab-content" id="tabBuyCourses">
+            <h2 style="color: var(--accent-neon); margin-bottom: 6px;">🛒 الكورسات المتاحة لـ (<span id="userGradeDisplay">الصف الدراسي</span>)</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">استعرض الكورسات المخصصة لسنك الدراسي للشراء:</p>
+            <div id="buyCoursesList" class="courses-grid"></div>
+        </section>
+
+        <!-- تبويب: كورسات تمتلكها -->
+        <section class="card-box tab-content hidden" id="tabMyCourses">
+            <h2 style="color: var(--accent-neon); margin-bottom: 6px;">🎓 كورسات تمتلكها</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">الكورسات التي قمت بشرائها للوصول للمحتوى:</p>
+            <div id="myCoursesList" class="courses-grid"></div>
+        </section>
+
+        <!-- مشغل المحاضرة والفيديوهات -->
+        <section id="courseContentSection" class="card-box hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 id="courseTitle" style="color: var(--accent-neon);">عنوان المحاضرة</h2>
+                <button onclick="switchTab('my')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">← العودة للكورسات</button>
+            </div>
+            <div>
+                <video id="mainVideo" controls controlsList="nodownload" oncontextmenu="return false;" style="width: 100%; border-radius: 10px; background:#000; max-height: 450px;">
+                    <source src="" type="video/mp4">
+                </video>
+            </div>
+            <div style="margin-top: 20px;">
+                <h3 style="font-size: 1.05rem; margin-bottom: 5px;">قائمة فيديوهات المحاضرة 📺</h3>
+                <div id="playlistItems" style="display: flex; flex-direction: column;"></div>
+            </div>
+        </section>
+
+        <!-- تبويب: الحساب الشخصي وشحن الرصيد -->
+        <section class="card-box tab-content hidden" id="tabProfile">
+            <h2 style="color: var(--accent-neon); margin-bottom: 20px;">👤 إعدادات الحساب وشحن الرصيد</h2>
+
+            <!-- شحن الرصيد -->
+            <div class="card-box" style="background: var(--input-bg); margin-bottom: 20px; border: 1px solid var(--card-border);">
+                <h3 style="color: #ffd700; margin-bottom: 8px;">🪙 شحن رصيد العملات</h3>
+                <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 12px;">أدخل كود الشحن المكون من أرقام/حروف:</p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <input type="text" id="rechargeCodeInput" placeholder="مثال: COIN-50-XXXXX" style="flex: 2; min-width: 180px;">
+                    <button onclick="submitRechargeCode()" class="btn btn-primary" style="flex: 1; min-width: 120px;">شحن الكود 🚀</button>
+                </div>
+                <p id="rechargeMsg" style="font-weight: bold; font-size: 0.88rem; margin-top: 10px;"></p>
+            </div>
+
+            <!-- تعديل البيانات -->
+            <div class="card-box" style="background: var(--input-bg); border: 1px solid var(--card-border);">
+                <h3 style="color: var(--accent-neon); margin-bottom: 15px;">تعديل البيانات الشخصية ⚙️</h3>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.85rem; font-weight: bold;">الاسم رباعي:</label>
+                    <input type="text" id="profNameInput">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.85rem; font-weight: bold;">رقم الطالب (ثابت):</label>
+                    <input type="tel" id="profPhoneInput" disabled style="opacity: 0.7;">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.85rem; font-weight: bold;">رقم ولي الأمر:</label>
+                    <input type="tel" id="profParentPhoneInput" inputmode="numeric" maxlength="11" oninput="limitPhoneLength(this)">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.85rem; font-weight: bold;">الجنس:</label>
+                    <select id="profGenderInput">
+                        <option value="ذكر">ذكر</option>
+                        <option value="أنثى">أنثى</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 0.85rem; font-weight: bold;">الديانة:</label>
+                    <select id="profReligionInput">
+                        <option value="مسلم">مسلم</option>
+                        <option value="مسيحي">مسيحي</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 18px;">
+                    <label style="font-size: 0.85rem; font-weight: bold;">الصف الدراسي:</label>
+                    <select id="profGradeInput">
+                        <option value="الصف الأول الإعدادي">الصف الأول الإعدادي</option>
+                        <option value="الصف الثاني الإعدادي">الصف الثاني الإعدادي</option>
+                        <option value="الصف الثالث الإعدادي">الصف الثالث الإعدادي</option>
+                        <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+                        <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+                        <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+                    </select>
+                </div>
+
+                <p id="profileMsg" style="font-weight: bold; font-size: 0.88rem; margin-bottom: 12px;"></p>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button onclick="saveProfileChanges()" class="btn btn-success" style="flex: 1;">حفظ التعديلات 💾</button>
+                    <button id="adminToggleBtn" class="btn btn-outline hidden" onclick="toggleAdminPanel()" style="flex: 1;">لوحة المدرس 🛠️</button>
+                    <button class="btn btn-danger" onclick="logout()" style="flex: 1;">تسجيل الخروج 🚪</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- لوحة تحكم المدرس -->
+        <section id="adminSection" class="card-box hidden" style="border: 2px dashed var(--accent-neon);">
+            <h2 style="color: var(--accent-neon); margin-bottom: 10px;">لوحة تحكم المدرس 🛠️</h2>
+            <hr style="border-color: var(--card-border); margin: 12px 0;">
+            <div>
+                <h3 style="font-size: 1rem; margin-bottom: 8px;">توليد أكواد شحن عملات جديدة</h3>
+                <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                    <input type="number" id="adminCoinsValue" placeholder="قيمة العملات" value="50" style="flex:1;">
+                    <input type="number" id="adminCodeCount" placeholder="العدد" value="3" style="flex:1;">
+                    <button onclick="generateCodes()" class="btn btn-primary">توليد وحفظ ⚡</button>
+                </div>
+                <div id="generatedCodesList" style="margin-top: 15px; color: var(--accent-neon); font-size: 0.9rem; line-height: 1.6;"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- شريط التنقل السفلي -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" id="btnTabBuy" onclick="switchTab('buy')">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-label">شراء كورس</span>
+        </button>
+        <button class="nav-item" id="btnTabMy" onclick="switchTab('my')">
+            <span class="nav-icon">📚</span>
+            <span class="nav-label">كورساتك</span>
+        </button>
+        <button class="nav-item" id="btnTabProfile" onclick="switchTab('profile')">
+            <span class="nav-icon">👤</span>
+            <span class="nav-label">حسابك</span>
+        </button>
+    </nav>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="neon-logo" style="font-size: 1.1rem;">أ/ سيد عويضة <span>.Edu</span></div>
+            <div style="color: var(--accent-neon); font-weight: bold; font-size: 0.88rem;">منصة تعليمية متكاملة لجميع المراحل</div>
+        </div>
+        <div class="footer-bottom">جميع الحقوق محفوظة © 2026 ✨</div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>
