@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - منصة أ/ سيد عويضة التعليمية</title>
+
+    <script>
+        (function() {
+            var savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            var user = localStorage.getItem('currentUser');
+            if (user) {
+                window.location.replace('index.html');
+            }
+        })();
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
+    <script src="firebase-config.js"></script>
+    <script src="main.js"></script>
+
+    <style>
+        .auth-tabs { display: flex; border-bottom: 2px solid var(--card-border); margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; background: none; border: none; color: var(--text-muted); font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+        .tab-btn.active { color: var(--accent-neon); border-bottom: 3px solid var(--accent-neon); }
+        .form-group { margin-bottom: 14px; text-align: right; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 0.88rem; }
+        .radio-group { display: flex; gap: 15px; margin-top: 5px; }
+        .radio-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="neon-logo">د/ سيد عويضة <span>.Edu</span></div>
+        <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeBtn">☀️ الوضع</button>
+    </header>
+
+    <main class="container" style="display: flex; align-items: center; justify-content: center; min-height: 82vh;">
+        <section class="card-box" style="max-width: 480px; width: 100%;">
+            
+            <div class="auth-tabs">
+                <button class="tab-btn active" id="loginTabBtn" onclick="switchAuthTab('login')">تسجيل الدخول</button>
+                <button class="tab-btn" id="registerTabBtn" onclick="switchAuthTab('register')">حساب جديد</button>
+            </div>
+
+            <!-- نموذج تسجيل الدخول -->
+            <form id="loginForm" onsubmit="handleAuth(event, 'login')">
+                <h3 style="color: var(--accent-neon); margin-bottom: 15px; text-align: center;">أهلاً بك مجدداً 👋</h3>
+                
+                <div class="form-group">
+                    <label>رقم هاتف الطالب:</label>
+                    <input type="tel" id="loginPhone" inputmode="numeric" placeholder="01xxxxxxxxx" maxlength="11" oninput="limitPhoneLength(this)" required>
+                </div>
+
+                <div class="form-group">
+                    <label>كلمة المرور:</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;">دخول المنصة 🔑</button>
+            </form>
+
+            <!-- نموذج إنشاء حساب جديد -->
+            <form id="registerForm" class="hidden" onsubmit="handleAuth(event, 'register')">
+                <h3 style="color: var(--accent-neon); margin-bottom: 15px; text-align: center;">إنشاء حساب طالب جديد 🚀</h3>
+                
+                <div class="form-group">
+                    <label>الاسم رباعي (بالعربي):</label>
+                    <input type="text" id="regFullName" placeholder="ادخل اسمك الرباعي" required>
+                </div>
+
+                <div class="form-group">
+                    <label>رقم هاتف الطالب:</label>
+                    <input type="tel" id="regStudentPhone" inputmode="numeric" placeholder="01xxxxxxxxx" maxlength="11" oninput="limitPhoneLength(this)" required>
+                </div>
+
+                <div class="form-group">
+                    <label>رقم هاتف ولي الأمر:</label>
+                    <input type="tel" id="regParentPhone" inputmode="numeric" placeholder="01xxxxxxxxx" maxlength="11" oninput="limitPhoneLength(this)" required>
+                </div>
+
+                <div class="form-group">
+                    <label>الجنس:</label>
+                    <select id="regGender" required>
+                        <option value="ذكر">ذكر</option>
+                        <option value="أنثى">أنثى</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>الديانة:</label>
+                    <select id="regReligion" required>
+                        <option value="مسلم">مسلم</option>
+                        <option value="مسيحي">مسيحي</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>الصف الدراسي:</label>
+                    <select id="regGrade" required>
+                        <option value="الصف الأول الإعدادي">الصف الأول الإعدادي</option>
+                        <option value="الصف الثاني الإعدادي">الصف الثاني الإعدادي</option>
+                        <option value="الصف الثالث الإعدادي">الصف الثالث الإعدادي</option>
+                        <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+                        <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+                        <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>كلمة المرور:</label>
+                    <input type="password" id="regPassword" placeholder="كلمة المرور (6 أحرف أو أرقام على الأقل)" required minlength="6">
+                </div>
+
+                <!-- خيار إرسال كود التحقق وإدخاله -->
+                <div style="margin: 20px 0 10px; border-top: 1px solid var(--card-border); padding-top: 15px;">
+                    <label style="font-weight: bold; font-size: 0.88rem; margin-bottom: 8px; display: block;">إرسال كود التأكيد (SMS) على:</label>
+                    
+                    <div class="radio-group" style="margin-bottom: 12px;">
+                        <label class="radio-label">
+                            <input type="radio" name="sendTargetPhone" value="student" checked> رقم الطالب
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="sendTargetPhone" value="parent"> رقم ولي الأمر
+                        </label>
+                    </div>
+
+                    <button type="button" id="sendOtpBtn" class="btn btn-outline" style="width: 100%;" onclick="requestPhoneVerification()">
+                        إرسال رمز التحقق SMS 📱
+                    </button>
+
+                    <div id="otpInputGroup" class="hidden" style="margin-top: 12px;">
+                        <div class="form-group">
+                            <label>أدخل رمز التحقق (OTP):</label>
+                            <input type="text" id="otpCodeInput" placeholder="123456" maxlength="6" inputmode="numeric">
+                        </div>
+                        <button type="button" class="btn btn-outline" style="width: 100%; border-color: var(--success); color: var(--success);" onclick="verifyOtpCode()">
+                            تأكيد كود التحقق ✓
+                        </button>
+                    </div>
+                </div>
+
+                <!-- مكان ظهور اختبار الـ reCAPTCHA -->
+                <div id="recaptcha-container" style="margin: 15px 0; display: flex; justify-content: center;"></div>
+
+                <button type="submit" id="submitRegBtn" class="btn btn-success" style="width: 100%; margin-top: 15px; opacity: 0.6;" disabled>إنشاء الحساب والدخول ✨</button>
+            </form>
+
+            <p id="authMessage" style="margin-top: 15px; font-weight: bold; font-size: 0.9rem; text-align: center;"></p>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-bottom">جميع الحقوق محفوظة © 2026 ✨</div>
+    </footer>
+
+    <script>
+        let isPhoneVerified = false;
+
+        function switchAuthTab(type) {
+            document.getElementById('authMessage').innerText = "";
+            if (type === 'login') {
+                document.getElementById('loginForm').classList.remove('hidden');
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('loginTabBtn').classList.add('active');
+                document.getElementById('registerTabBtn').classList.remove('active');
+            } else {
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('registerForm').classList.remove('hidden');
+                document.getElementById('registerTabBtn').classList.add('active');
+                document.getElementById('loginTabBtn').classList.remove('active');
+            }
+        }
+
+        async function requestPhoneVerification() {
+            const studentPhone = document.getElementById("regStudentPhone").value.trim();
+            const parentPhone = document.getElementById("regParentPhone").value.trim();
+            const targetChoice = document.querySelector('input[name="sendTargetPhone"]:checked').value;
+            const msg = document.getElementById("authMessage");
+
+            const phoneToSend = targetChoice === 'parent' ? parentPhone : studentPhone;
+
+            if (phoneToSend.length < 11) {
+                msg.style.color = "var(--danger)";
+                msg.innerText = targetChoice === 'parent' 
+                    ? "⚠️ يرجى إدخال رقم هاتف ولي الأمر صحيحاً (11 رقماً) أولاً!" 
+                    : "⚠️ يرجى إدخال رقم هاتف الطالب صحيحاً (11 رقماً) أولاً!";
+                return;
+            }
+
+            msg.style.color = "var(--accent-neon)";
+            msg.innerText = "⏳ جاري إرسال رمز التحقق عبر SMS...";
+
+            const res = await sendPhoneVerificationCode(phoneToSend);
+            if (res.success) {
+                msg.style.color = "var(--success)";
+                msg.innerText = res.msg;
+                document.getElementById("otpInputGroup").classList.remove("hidden");
+                document.getElementById("sendOtpBtn").classList.add("hidden");
+            } else {
+                msg.style.color = "var(--danger)";
+                msg.innerText = res.msg;
+            }
+        }
+
+        async function verifyOtpCode() {
+            const code = document.getElementById("otpCodeInput").value.trim();
+            const msg = document.getElementById("authMessage");
+
+            if (code.length < 6) {
+                msg.style.color = "var(--danger)";
+                msg.innerText = "⚠️ يرجى إدخال كود التحقق المكون من 6 أرقام.";
+                return;
+            }
+
+            msg.style.color = "var(--accent-neon)";
+            msg.innerText = "⏳ جاري مطابقة الرمز...";
+
+            const res = await verifyPhoneNumberCode(code);
+            if (res.success) {
+                isPhoneVerified = true;
+                msg.style.color = "var(--success)";
+                msg.innerText = "✅ تم التحقق من رقم الهاتف بنجاح!";
+                document.getElementById("otpInputGroup").classList.add("hidden");
+                const submitBtn = document.getElementById("submitRegBtn");
+                submitBtn.removeAttribute("disabled");
+                submitBtn.style.opacity = "1";
+            } else {
+                msg.style.color = "var(--danger)";
+                msg.innerText = res.msg;
+            }
+        }
+
+        async function handleAuth(event, type) {
+            event.preventDefault();
+            const msg = document.getElementById("authMessage");
+
+            if (type === 'register' && !isPhoneVerified) {
+                msg.style.color = "var(--danger)";
+                msg.innerText = "⚠️ يجب التحقق من رقم الهاتف عبر رمز SMS قبل إنشاء الحساب!";
+                return;
+            }
+
+            msg.style.color = "var(--accent-neon)";
+            msg.innerText = "⏳ جاري المعالجة والحفظ...";
+
+            let userData = {};
+
+            if (type === 'login') {
+                userData = {
+                    phone: document.getElementById("loginPhone").value.trim(),
+                    password: document.getElementById("loginPassword").value,
+                    type: 'login'
+                };
+            } else {
+                userData = {
+                    fullName: document.getElementById("regFullName").value.trim(),
+                    studentPhone: document.getElementById("regStudentPhone").value.trim(),
+                    parentPhone: document.getElementById("regParentPhone").value.trim(),
+                    gender: document.getElementById("regGender").value,
+                    religion: document.getElementById("regReligion").value,
+                    grade: document.getElementById("regGrade").value,
+                    password: document.getElementById("regPassword").value,
+                    type: 'register'
+                };
+            }
+
+            if (typeof loginOrRegisterStudent === 'function') {
+                const res = await loginOrRegisterStudent(userData);
+
+                if (res.success) {
+                    msg.style.color = "var(--success)";
+                    msg.innerText = "✅ تم بنجاح! جاري توجيهك للمنصة...";
+                    setTimeout(() => window.location.replace("index.html"), 600);
+                } else {
+                    msg.style.color = "var(--danger)";
+                    msg.innerText = res.msg || "❌ حدث خطأ، يرجى المحاولة لاحقاً.";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
